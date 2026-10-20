@@ -24,36 +24,74 @@ namespace FLScanIE
         {
             FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
             var loadouts = ini.GetSettings("Loadout");
+            string filepath = file;
+            bool loadoutType = filepath.Contains("solar");
+            if (loadoutType)
+                Logger.WLog("Loadout type is Solor");
+            else
+                Logger.WLog("Loadout type is Ship");
+
             string currentArchetype = null;
+            string currentLoadout = null;
+            string lastLoadout = null;
+            bool validEngine = false;
+            bool validTractor = false;
+            bool validPower = false;
 
             foreach (var loadout in loadouts)
             {
                 string item;
                 switch (loadout.settingName)
                 {
+                    
                     case "nickname":
                         currentArchetype = null;
+                        currentLoadout = loadout.Str(0);
+                        //Logger.WLog("Register new loadout: " + currentLoadout);
                         break;
                     case "archetype":
-                        if(!ShipChecks.ShipExists(loadout.Str(0)) && !SolarChecks.SolarExists(loadout.Str(0)))
+                        if (!ShipChecks.ShipExists(loadout.Str(0)) && !SolarChecks.SolarExists(loadout.Str(0)))
                             Logger.LogInvalidValue(file, loadout, "Archetype not found!");
                         currentArchetype = loadout.Str(0);
                         break;
                     case "equip": // TODO: check if there are more weapons than hardpoints
                         item = loadout.Str(0);
-                        if(!EquipmentChecks.EquipExists(item))
+                        if (!EquipmentChecks.EquipExists(item))
                             Logger.LogInvalidValue(file, loadout, "Equip doesn't exist!");
+
+                        // Check if engine, tractor, and power exist otherwise ship will cause crashes if used for an NPC
+                        bool checkEngineMissing = EquipmentChecks.GetCategory(item).Contains("engine");
+                        if (checkEngineMissing)
+                        { 
+                            validEngine = true;
+                            if (loadoutType == true)
+                                Logger.LogInvalidValue(file, loadout, "Solar loadout should not have an engine: " + currentLoadout + " -");
+                        }
+
+                        bool checkTractorMissing = EquipmentChecks.GetCategory(item).Contains("tractor");
+                        if (checkTractorMissing)
+                        { 
+                            validTractor = true;
+                            if (loadoutType == true)
+                                Logger.LogInvalidValue(file, loadout, "Solar loadout should not have a tractor beam: " + currentLoadout + " -");
+                        }
+
+                        bool checkPowerMissing = EquipmentChecks.GetCategory(item).Contains("power");
+                        if (checkPowerMissing)
+                        { 
+                            validPower = true;
+                        }
 
                         if (loadout.NumValues() == 2 && currentArchetype != null)
                         {
                             string hardpoint = loadout.Str(1);
                             string category = EquipmentChecks.GetCategory(item);
-                            if (!new [] { "CargoPod", "Light", "AttachedFX", "ShieldGenerator", "Shield", "Scanner", "Tractor", "CounterMeasureDropper", "Engine", "Thruster", "CloakingDevice", "Motor", "Gun", "MineDropper" }.Contains(category))
+                            if (!new[] { "CargoPod", "Light", "AttachedFX", "ShieldGenerator", "Shield", "Scanner", "Tractor", "CounterMeasureDropper", "Engine", "Thruster", "CloakingDevice", "Motor", "Gun", "MineDropper" }.Contains(category))
                                 break;
 
                             if (Checker.DisableUTF)
                                 break;
-                            
+
                             Dictionary<string, UtfFile> utfList;
                             if (ShipChecks.ShipExists(currentArchetype))
                             {
@@ -75,11 +113,28 @@ namespace FLScanIE
                         break;
                     case "cargo":
                         item = loadout.Str(0);
-                        if(!EquipmentChecks.EquipExists(item))
+                        if (!EquipmentChecks.EquipExists(item))
                             Logger.LogInvalidValue(file, loadout, "Item doesn't exist!");
                         break;
                 }
+                if (currentLoadout != lastLoadout)
+                {
+                    if (lastLoadout != null && loadoutType != true)
+                    {
+                        if (validEngine == false)
+                            Logger.LogInvalidValue(file, loadout, "Missing engine for loadout:");
+                        if (validTractor == false)
+                            Logger.LogInvalidValue(file, loadout, "Missing tractor beam for loadout:");
+                        if (validPower == false)
+                            Logger.LogInvalidValue(file, loadout, "Missing power for loadout:");
+                    } else
+                    {
+                        //Logger.WLog("Read " + loadout);
+                    }
+                    lastLoadout = currentLoadout;
+                }
             }
+
         }
 
         public static void ParseLoadouts()
