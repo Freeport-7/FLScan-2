@@ -73,7 +73,7 @@ namespace FLScanIE
             var materials = ship.GetSettings("material_library");
             foreach (var material in materials)
             {
-                if (!File.Exists(Path.Combine(Checker.flDataPath, material.Str(0))))
+                if (!Checker.FileExists(material.Str(0)))
                     Logger.LogFileNotFound(file, material);
             }
 
@@ -82,8 +82,8 @@ namespace FLScanIE
                 if (!FXChecks.ExplosionExists(ship.GetSetting("explosion_arch").Str(0)))
                     Logger.LogInvalidValue(file, ship.GetSetting("explosion_arch"), "Explosion doesn't exist!");
             }
-            else
-                Logger.LogSettingNotFound(file, nick, "Ship", "explosion_arch");
+            //else
+            //    Logger.LogSettingNotFound(file, nick, "Ship", "explosion_arch");
 
             var surfaceEffects = ship.GetSettings("surface_hit_effects");
             foreach (var surfaceEffect in surfaceEffects)
@@ -113,7 +113,7 @@ namespace FLScanIE
             if (ship.SettingExists("HP_bay_external") && ShipChecks.shipUTF.ContainsKey(nick) && !ShipChecks.HardpointExists(nick, ship.GetSetting("HP_bay_external").Str(0)))
                 Logger.LogHardpoint(file, ship.GetSetting("HP_bay_external"));
 
-            if (!Checker.DisableUTF && ShipChecks.shipUTF.ContainsKey(nick))
+            if (!Checker.DisableUTF && ShipChecks.shipUTF.ContainsKey(nick) && !(shipUTF[nick] == null && Checker.AssumeVanillaFilesExist))
             {
                 if (ship.SettingExists("num_exhaust_nozzles"))
                 {
@@ -124,8 +124,8 @@ namespace FLScanIE
                         Logger.LogInvalidValue(file, ship.GetSetting("num_exhaust_nozzles"), 
                                                "Isn't smaller or equal than number of HpEngines in cmp (" + engines_cmp + ")!");
                 }
-                else
-                    Logger.LogSettingNotFound(file, nick, "Ship", "explosion_arch");
+                //else
+                //    Logger.LogSettingNotFound(file, nick, "Ship", "num_exhaust_nozzles");
             }
 
             var hp_typeEntries = ship.GetSettings("hp_type");
@@ -135,7 +135,8 @@ namespace FLScanIE
                     Logger.LogInvalidValue(file, hpTypeEntry, "Invalid hardpoint-type!", hpTypeEntry.Str(0));
                 for (int i = 1; i < hpTypeEntry.NumValues(); i++)
                 {
-                    if (hpTypeEntry.Str(i).Trim().Length != 0 && !Checker.DisableUTF && !shipUTF[nick].HardpointExists(hpTypeEntry.Str(i)))
+                    if (hpTypeEntry.Str(i).Trim().Length != 0 && !Checker.DisableUTF && shipUTF.ContainsKey(nick) 
+                        && !(shipUTF[nick] == null && Checker.AssumeVanillaFilesExist) && !shipUTF[nick].HardpointExists(hpTypeEntry.Str(i)))
                         Logger.LogHardpoint(file, hpTypeEntry, hpTypeEntry.Str(i));
                 }
             }
@@ -150,7 +151,8 @@ namespace FLScanIE
 
                 for (int i = 1; i < shieldLink.NumValues(); i++)
                 {
-                    if (shieldLink.Str(i).Trim().Length != 0 && !Checker.DisableUTF && shipUTF.ContainsKey(nick) && !shipUTF[nick].HardpointExists(shieldLink.Str(i)))
+                    if (shieldLink.Str(i).Trim().Length != 0 && !Checker.DisableUTF && shipUTF.ContainsKey(nick) 
+                        && !(shipUTF[nick] == null && Checker.AssumeVanillaFilesExist) && !shipUTF[nick].HardpointExists(shieldLink.Str(i)))
                         Logger.LogHardpoint(file, shieldLink, shieldLink.Str(i));
                 }
             }
@@ -158,23 +160,23 @@ namespace FLScanIE
             if (ship.SettingExists("cockpit"))
             {
                 string cockpit = ship.GetSetting("cockpit").Str(0);
-                if (File.Exists(Path.Combine(Checker.flDataPath, cockpit)))
+                if (Checker.FileExists(cockpit))
                 {
                     CheckCockpitFile(cockpit);
                 }
                 else
                     Logger.LogFileNotFound(file, ship.GetSetting("cockpit"));
             }
-            else
-                Logger.LogSettingNotFound(file, nick, "Ship", "cockpit");
+            //else
+            //    Logger.LogSettingNotFound(file, nick, "Ship", "cockpit");
 
             if (ship.SettingExists("pilot_mesh"))
             {
                 if (!simpleNicknames.Contains(ship.GetSetting("pilot_mesh").Str(0)))
                     Logger.LogInvalidValue(file, ship.GetSetting("pilot_mesh"), "Simple doesn't exist!");
             }
-            else
-                Logger.LogSettingNotFound(file, nick, "Ship", "pilot_mesh");
+            //else
+            //    Logger.LogSettingNotFound(file, nick, "Ship", "pilot_mesh");
         }
 
         private static void CheckCollGroup(string file, FLDataFile.Section collGrp)
@@ -239,7 +241,7 @@ namespace FLScanIE
         {
             if (simple.SettingExists("material_library"))
             {
-                if (!File.Exists(Path.Combine(Checker.flDataPath, simple.GetSetting("material_library").Str(0))))
+                if (!Checker.FileExists(simple.GetSetting("material_library").Str(0)))
                     Logger.LogFileNotFound(file, simple.GetSetting("material_library"));
             }
             else
@@ -255,7 +257,7 @@ namespace FLScanIE
             if(CockpitSection.SettingExists("mesh"))
             {
                 var mesh = CockpitSection.GetSetting("mesh");
-                if (!File.Exists(Path.Combine(Checker.flDataPath, mesh.Str(0))))
+                if (!Checker.FileExists(mesh.Str(0)))
                     Logger.LogFileNotFound(file, mesh);
             }
             else
@@ -291,6 +293,13 @@ namespace FLScanIE
                             shipNicknames.Add(retn.Nick);
                             if (retn.UtfFile != null)
                                 shipUTF.Add(retn.Nick, retn.UtfFile);
+                            else
+                            {
+                                string shipPath = Util.TryGetStrSetting(section, "DA_archetype");
+
+                                if (shipPath != null && Checker.HasVanillaFile(shipPath))
+                                    shipUTF.Add(retn.Nick, null);
+                            }
                             break;
                         case "Simple":
                             retn = Util.ParseNickUTF(Checker.flDataPath, shipFile, section);
@@ -316,7 +325,7 @@ namespace FLScanIE
 
         private static bool HardpointExists(string ship, string hp)
         {
-            if (Checker.DisableUTF)
+            if (Checker.DisableUTF || (shipUTF[ship] == null && Checker.AssumeVanillaFilesExist))
                 return true;
             return shipUTF[ship].HardpointExists(hp);
         }

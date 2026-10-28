@@ -56,7 +56,7 @@ namespace FLScanIE
                 string roomFile = Util.TryGetStrSetting(room, "file");
                 if(roomFile == null)
                     Logger.LogSettingNotFound(file, room.settings[0].LineNumber, "Room", "file");
-                else if (!File.Exists(Path.Combine(Checker.flDataPath, roomFile)))
+                else if (!Checker.FileExists(roomFile))
                     Logger.LogFileNotFound(file, room.GetSetting("file"));
                 else
                     CheckRoomFile(roomFile, ref roomNicks);
@@ -143,7 +143,7 @@ namespace FLScanIE
                 switch (setting.settingName.ToLower())
                 {
                     case "file":
-                        if (!File.Exists(Path.Combine(Checker.flDataPath, val)))
+                        if (!Checker.FileExists(val))
                             Logger.LogFileNotFound(file, setting);
                         break;
                     case "system":
@@ -289,7 +289,7 @@ namespace FLScanIE
                         string name = Util.TryGetStrSetting(section, "name");
                         string local_fact = Util.TryGetStrSetting(section, "local_faction"); // TODO
                         string rpopd = Util.TryGetStrSetting(section, "rpop_solar_detection");
-                        float farclip = float.Parse(Util.TryGetStrSetting(section, "space_farclip"));
+                        string farclip = Util.TryGetStrSetting(section, "space_farclip");
 
                         //if (name != null && name.ToLower() != sysnick)
                         //Logger.LogInvalidValue(file, section.GetSetting("name"), "Should equal system-nickname!");
@@ -298,16 +298,20 @@ namespace FLScanIE
                         if (rpopd != null)
                             if (rpopd.ToLower() != "false" && rpopd.ToLower() != "true")
                                 Logger.LogInvalidValue(file, section.GetSetting("rpopd"), "Must be true or false.");
-                        if (farclip < 1000)
-                            Logger.LogInvalidValue(file, section.GetSetting("farclip"), "Must be at least 1000.");
-                        else if (farclip > 999)
-                            break;
-                        else
-                            Logger.LogInvalidValue(file, section.GetSetting("farclip"), "Invalid data type, expected numeric value.");
+                        if (farclip != null)
+                        {
+                            float farclip_float = float.Parse(farclip);
+                            if (farclip_float < 1000)
+                                Logger.LogInvalidValue(file, section.GetSetting("farclip"), "Must be at least 1000.");
+                            else if (farclip_float > 999)
+                                break;
+                            else
+                                Logger.LogInvalidValue(file, section.GetSetting("farclip"), "Invalid data type, expected numeric value.");
+                        }
                         break;
                     case "texturepanels":
                         val = Util.TryGetStrSetting(section, "file");
-                        if (val != null && !File.Exists(Path.Combine(Checker.flDataPath, val)))
+                        if (val != null && !Checker.FileExists(val))
                             Logger.LogFileNotFound(file, section.GetSetting("file"));
                         break;
                     case "archetype": // Updated 01/2024
@@ -384,23 +388,23 @@ namespace FLScanIE
 
                         if (basic_stars != null)
                         {
-                            if (!File.Exists(Path.Combine(Checker.flDataPath, basic_stars)))
+                            if (!Checker.FileExists(basic_stars))
                                 Logger.LogFileNotFound(file, section.GetSetting("basic_stars"));
                         }
-                        else
-                            Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "Background", "basic_stars");
+                        //else
+                        //    Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "Background", "basic_stars");
 
                         if (complex_stars != null)
                         {
-                            if (!File.Exists(Path.Combine(Checker.flDataPath, complex_stars)))
+                            if (!Checker.FileExists(complex_stars))
                                 Logger.LogFileNotFound(file, section.GetSetting("complex_stars"));
                         }
-                        else
-                            Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "Background", "complex_stars");
+                        //else
+                        //    Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "Background", "complex_stars");
 
                         if (nebulae != null)
                         {
-                            if (!File.Exists(Path.Combine(Checker.flDataPath, nebulae)))
+                            if (!Checker.FileExists(nebulae))
                                 Logger.LogFileNotFound(file, section.GetSetting("nebulae"));
                         }
                         else
@@ -438,8 +442,8 @@ namespace FLScanIE
                             if (ls_attenCurve.ToLower() != "dynamic_direction")
                                 Logger.LogInvalidValue(file, section.GetSetting("atten_curve"), "Has to be DYNAMIC_DIRECTION.");
                         }
-                        else
-                            Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "LightSource", "atten_curve");
+                        //else
+                        //    Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "LightSource", "atten_curve");
 
                         if (ls_behavior != null)
                             Logger.LogInvalidValue(file, section.GetSetting("behavior"), "Invalid line in file.");
@@ -529,7 +533,7 @@ namespace FLScanIE
                                         break;
                                     string ring_zone = setting.Str(0);
                                     string ring_file = setting.Str(1);
-                                    if (File.Exists(Path.Combine(Checker.flDataPath, ring_file)))
+                                    if (Checker.FileExists(ring_file))
                                         CheckRingFile(ring_file, sysnick);
                                     else
                                         Logger.LogFileNotFound(file, setting, ring_file);
@@ -753,7 +757,7 @@ asteroid_loot_commodity = commodity_gold*/
                             baseNicks[sys] = new List<string>();
                         baseNicks[sys].Add(nick.ToLower());
 
-                        if (!File.Exists(Path.Combine(Checker.flDataPath, bfile)))
+                        if (!Checker.FileExists(bfile))
                         {
                             Logger.LogFileNotFound(file, section.GetSetting("file"));
                             break;

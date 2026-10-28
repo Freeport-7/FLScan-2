@@ -105,6 +105,30 @@ namespace FLScanIE
             }
         }
 
+        static void LoadDefaultShipClassMembers()
+        {
+            List<string> default_members = new List<string>()
+            {
+                "FIGHTER", "FREIGHTER", "TRANSPORT", "GUNBOAT", "CRUISER", "CAPITAL", "TRADELANE",
+                "JUMPGATE", "WEAPONS_PLATFORM", "DESTROYABLE_DEPOT", "SOLAR", "ANYTHING"
+            }.ConvertAll(m => m.ToLowerInvariant());
+
+            SHIPCLASS s = new SHIPCLASS();
+            s.nickname = "_";
+            s.members = default_members;
+            shipclasses[s.nickname] = s;
+
+            for (int i = 0; i < 10; ++i)
+            for (int j = 0; j < 10; ++j)
+            {
+                s.nickname = $"diff{i}{j}";
+                s.members = default_members;
+                shipclasses[s.nickname] = s;
+
+                default_members.Add($"d{i}{j}");
+            }
+        }
+
         static bool ShipClassMemberExists(string member)
         {
             foreach (SHIPCLASS c in shipclasses.Values)
@@ -170,6 +194,12 @@ namespace FLScanIE
 
                             o.levels[level] = true;
                         }
+                    }
+                    else if (set.settingName == "ship_archetype")
+                    {
+                        string shipArch = set.Str(0).ToLowerInvariant();
+                        if (!ShipChecks.ShipExists(shipArch))
+                            Logger.LogInvalidValue(npcShipPath, set, "Ship archetype doesn't exist!");
                     }
                 }
                 if (!isMission)
@@ -497,6 +527,7 @@ namespace FLScanIE
 
                 LoadFormations();
                 LoadShipClasses();
+                LoadDefaultShipClassMembers();
                 LoadNPCShips();
                 LoadFactionProps();
                 LoadUniverse();
